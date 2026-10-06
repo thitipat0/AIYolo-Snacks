@@ -1,0 +1,7 @@
+env/
+labelstudio-env/
+runs/
+__pycache__/
+*.mp4
+yolo26n.pt
+*.cache
