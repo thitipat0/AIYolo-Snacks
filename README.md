@@ -1,26 +1,28 @@
 # 🍿 AIYolo-Snacks: ตรวจจับและจำแนกซองขนมด้วย YOLO26
 
-โปรเจกต์ระบบวิเคราะห์ภาพเพื่อตรวจจับและจำแนกชนิดของซองขนม 3 ยี่ห้อ (**Lays**, **RollerCoaster**, **Tasto**) แบบอัตโนมัติ โดยใช้สถาปัตยกรรม **YOLO26** ร่วมกับ **Label Studio** ในการจัดการและเตรียมชุดข้อมูล สามารถประมวลผลได้ทั้งจากภาพถ่าย วิดีโอ และกล้องเว็บแคมแบบ Real-time
-
----
+โปรเจกต์ระบบวิเคราะห์ภาพเพื่อตรวจจับและจำแนกชนิดของซองขนม 3 ยี่ห้อ (**Oreo**, **Lausanne**, **Voiz**) แบบอัตโนมัติ โดยใช้สถาปัตยกรรม **YOLO26** ร่วมกับ **Label Studio** ในการจัดการและเตรียมชุดข้อมูล สามารถประมวลผลได้ทั้งจากภาพถ่าย วิดีโอ และกล้องเว็บแคมแบบ Real-time
 
 ## 🚀 Quick Start (เริ่มต้นใช้งานด่วน)
 
 หากคุณมีไฟล์โมเดลที่เทรนสำเร็จแล้วและต้องการทดสอบใช้งานทันที:
 
 1. ทำตามขั้นตอนการติดตั้งในหัวข้อ [Installation](#-installation)
+
 2. วางไฟล์โมเดลไว้ที่ตำแหน่ง `Model/best.pt`
+
 3. รันสคริปต์เพื่อทดสอบใช้งาน:
-   - **ทดสอบผ่านกล้อง Real-time:**
+
+   * **ทดสอบผ่านกล้อง Real-time:**
+
      ```bash
      python 05-test-camera2.py
      ```
-   - **ทดสอบกับรูปภาพ:**
+
+   * **ทดสอบกับรูปภาพ:**
+
      ```bash
      python 03-test_image.py
      ```
-
----
 
 ## 📁 Project Structure (โครงสร้างโปรเจกต์)
 
@@ -41,13 +43,13 @@ AIYolo-Snacks/
 └── README.md                             # คู่มือและเอกสารอธิบายโปรเจกต์
 ```
 
-### 🏷️️ Target Classes
-โมเดลรองรับการจำแนกขนมทั้งหมด 3 คลาส ได้แก่:
-- `0`: **Lays**
-- `1`: **RollerCoaster**
-- `2`: **Tasto**
+### 🏷 Target Classes
 
----
+โมเดลรองรับการจำแนกขนมทั้งหมด 3 คลาส ได้แก่:
+
+* `0`: **Oreo**
+* `1`: **Lausanne**
+* `2`: **Voiz**
 
 ## 🛠️ Installation (การติดตั้งระบบ)
 
@@ -78,22 +80,16 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 pip install -r requirements.txt
 ```
 
----
-
 ## 🔄 Workflow Pipeline (ขั้นตอนการทำงาน)
 
-```mermaid
-graph LR
-    A[ถ่ายภาพ/เตรียมรูปภาพ] --> B[Label Studio]
-    B --> C[Export JSON]
-    C --> D[01-export_dataset.py]
-    D --> E[New-Snacks_dataset]
-    E --> F[02-train2.py]
-    F --> G[Model/best.pt]
-    G --> H[Testing Scripts]
+```text
+[ถ่ายภาพ/เตรียมรูปภาพ] --> [Label Studio] --> [Export JSON] --> [01-export_dataset.py]
+                                                                        │
+[Testing Scripts] <-- [Model/best.pt] <-- [02-train2.py] <-- [New-Snacks_dataset]
 ```
 
 ### Step 1: ติดตั้งและตั้งค่า Label Studio
+
 1. ติดตั้งและเริ่มทำงาน Label Studio
 2. ตั้งค่า **Labeling Interface** โดยใช้ Template XML ด้านล่างนี้:
 
@@ -101,17 +97,18 @@ graph LR
 <View>
   <Image name="image" value="$image"/>
   <RectangleLabels name="label" toName="image">
-    <Label background="#FF0000" value="Lays"/>
-    <Label background="#00AA00" value="RollerCoaster"/>
-    <Label background="#0000FF" value="Tasto"/>
+    <Label background="#FF0000" value="Oreo"/>
+    <Label background="#00AA00" value="Lausanne"/>
+    <Label background="#0000FF" value="Voiz"/>
   </RectangleLabels>
 </View>
 ```
 
 3. ทำการกำกับภาพ (Annotate) รูปภาพทั้งหมดในโฟลเดอร์ `frame/`
-4. เมื่อเสร็จสิ้น ให้ทำการ Export ข้อมูลออกมาเป็นไฟล์รูปแบบ **JSON** และนำไฟล์มาวางไว้ที่ Root Directory ของโปรเจกต์
+4. เมื่อเสร็จสิ้น ให้ทำการ Export ข้อมูลออกมาเป็นไฟล์รูปแบบ **JSON** และนำไฟล์มาวางไว้ที่ Root Directory ของโปรเจกต์ (เช่น `project-9-at-2026-10-05-23-47-6...json`)
 
 ### Step 2: แปลงชุดข้อมูลเข้าสู่ YOLO Format
+
 รันสคริปต์เพื่อนำไฟล์ JSON มาจัดสัดส่วนและแปลงเป็น YOLO Dataset ไว้ในโฟลเดอร์ `New-Snacks_dataset/`:
 
 ```bash
@@ -119,33 +116,39 @@ python 01-export_dataset.py
 ```
 
 ### Step 3: การเทรนโมเดล (Training)
+
 สั่งเริ่มการเทรนโมเดลด้วย YOLO26 โดยรันสคริปต์:
 
 ```bash
 python 02-train2.py
 ```
+
 *หมายเหตุ: เมื่อเทรนเสร็จสมบูรณ์ ให้นำไฟล์น้ำหนักที่ได้ผลลัพธ์ดีที่สุด (`best.pt`) มาจัดเก็บไว้ที่โฟลเดอร์ `Model/best.pt`*
 
 ### Step 4: การทดสอบประมวลผล (Testing)
 
-- **ทดสอบจำแนกภาพแบบ Real-time จากกล้อง:**
+* **ทดสอบจำแนกภาพแบบ Real-time จากกล้อง:**
+
   ```bash
   python 05-test-camera2.py
   ```
-- **ทดสอบจำแนกภาพถ่าย:**
+
+* **ทดสอบจำแนกภาพถ่าย:**
+
   ```bash
   python 03-test_image.py
   ```
-- **ทดสอบจำแนกวิดีโอ:**
+
+* **ทดสอบจำแนกวิดีโอ:**
+
   ```bash
   python 04-test_video.py
   ```
 
----
-
 ## 💡 Troubleshooting (การแก้ไขปัญหาเบื้องต้น)
 
-- **ปัญหา CUDA ไม่ทำงาน / GPU OOM (Out of Memory):** 
+* **ปัญหา CUDA ไม่ทำงาน / GPU OOM (Out of Memory):**
   หากเกิดข้อผิดพลาดด้านหน่วยความจำ GPU เต็ม ให้ทดลองลดขนาด `batch` ในไฟล์ `02-train2.py` หรือตรวจสอบการติดตั้ง CUDA PyTorch ด้วยคำสั่ง `python -c "import torch; print(torch.cuda.is_available())"`
-- **หาไฟล์ JSON ไม่พบในขั้นตอน Export:**
+
+* **หาไฟล์ JSON ไม่พบในขั้นตอน Export:**
   ตรวจสอบว่าไฟล์ Export จาก Label Studio นำมาวางไว้ที่ Root directory ของโปรเจกต์แล้วเรียบร้อยหรือไม่
