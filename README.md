@@ -1,216 +1,752 @@
-# 🍿 AIYolo-Snacks: ระบบตรวจจับและจำแนกวัตถุซองขนมด้วย YOLO26
+# 🍿 AIYolo-Snacks: ระบบตรวจจับซองขนมด้วย YOLO26
 
-![YOLO26 Detection](https://img.shields.io/badge/YOLO-v8%20%2F%20v11%20%2F%20YOLO26-blue)
-![Python](https://img.shields.io/badge/Python-3.9%2B-green)
-![PyTorch](https://img.shields.io/badge/PyTorch-CUDA%20Supported-orange)
-![Label Studio](https://img.shields.io/badge/Annotation-Label%20Studio-brightgreen)
+โปรเจกต์ **Object Detection** สำหรับตรวจจับและจำแนกประเภทซองขนมจากภาพ โดยใช้
+**YOLO26** และ **Ultralytics**
 
-โปรเจกต์พัฒนาระบบ Computer Vision เพื่อการตรวจจับ (Object Detection) และจำแนกชนิดซองขนม 3 ยี่ห้อ (**Oreo**, **Lausanne**, **Voiz**) แบบอัตโนมัติ โดยรองรับการทำงานทั้งแบบออฟไลน์ (รูปภาพ/วิดีโอ) และแบบ Real-time ผ่านกล้องเว็บแคม เหมาะสำหรับประยุกต์ใช้ในระบบตรวจนับสินค้าหน้าร้าน (Retail Automation) หรือระบบการจัดการคลังสินค้าอัตโนมัติ
+โมเดลรองรับการตรวจจับซองขนม 3 ประเภท ได้แก่ **Lausanne, Oreo และ Voiz**
+และสามารถนำโมเดลที่ผ่านการฝึกไปใช้งานกับรูปภาพ วิดีโอ และกล้องแบบ Real-time ได้
 
----
+------------------------------------------------------------------------
 
-## 📌 สารบัญ (Table of Contents)
-1. [คุณสมบัติของระบบ (Key Features)](#-คุณสมบัติของระบบ-key-features)
-2. [คลาสเป้าหมาย (Target Classes)](#-คลาสเป้าหมาย-target-classes)
-3. [โครงสร้างโปรเจกต์ (Project Structure)](#-โครงสร้างโปรเจกต์-project-structure)
-4. [ข้อกำหนดและการติดตั้ง (Requirements & Installation)](#-ข้อกำหนดและการติดตั้ง-requirements--installation)
-5. [ขั้นตอนการทำงานอย่างละเอียด (End-to-End Pipeline)](#-ขั้นตอนการทำงานอย่างละเอียด-end-to-end-pipeline)
-   - [1. การจัดเตรียมรูปภาพและการดึงเฟรม (Data Preparation)](#1-การจัดเตรียมรูปภาพและการดึงเฟรม-data-preparation)
-   - [2. การทำ Annotation ด้วย Label Studio](#2-การทำ-annotation-ด้วย-label-studio)
-   - [3. การแปลงชุดข้อมูลเป็น YOLO Format](#3-การแปลงชุดข้อมูลเป็น-yolo-format)
-   - [4. การเทรนโมเดล (Model Training)](#4-การเทรนโมเดล-model-training)
-   - [5. การประเมินผลและการทดสอบ (Evaluation & Inference)](#5-การประเมินผลและการทดสอบ-evaluation--inference)
-6. [การตั้งค่าพารามิเตอร์ไฮเปอร์พารามิเตอร์ (Hyperparameters)](#-การตั้งค่าพารามิเตอร์ไฮเปอร์พารามิเตอร์-hyperparameters)
-7. [การแก้ไขปัญหาที่พบบ่อย (Troubleshooting & FAQs)](#-การแก้ไขปัญหาที่พบบ่อย-troubleshooting--faqs)
+## 📌 คุณสมบัติของระบบ
 
----
+-   ตรวจจับซองขนมด้วย **Object Detection + Bounding Box**
+-   จำแนกซองขนม 3 Class
+-   ทดสอบโมเดลกับรูปภาพ
+-   ทดสอบโมเดลกับวิดีโอ
+-   ตรวจจับวัตถุผ่าน Webcam แบบ Real-time
+-   แปลง Annotation จาก Label Studio JSON เป็น YOLO Dataset
+-   แบ่ง Dataset เป็น Training และ Validation อัตโนมัติ
+-   รองรับ Data Augmentation ระหว่างการ Training
+-   มีโมเดลที่ Train แล้วอยู่ที่ `Model/best.pt`
 
-## 🚀 คุณสมบัติของระบบ (Key Features)
+------------------------------------------------------------------------
 
-- **High-Accuracy Detection:** ใช้สถาปัตยกรรม YOLO26 ล่าสุดในการจับขอบเขต (Bounding Box) และระบุคลาสได้อย่างแม่นยำแม้ในสภาวะแสงที่ต่างกัน
-- **Real-time Performance:** รองรับการประมวลผลผ่านกล้องเว็บแคมด้วยเฟรมเรตสูงผ่านการเร่งประมวลผลด้วย GPU (CUDA Acceleration)
-- **Robust Augmentation:** มีระบบการทำ Data Augmentation ทั้ง Mosaic, Mixup, Random Rotation และ Perspective Shift ช่วยให้โมเดลไม่ Overfit
-- **Automated Dataset Conversion:** มีสคริปต์แปลงไฟล์ Annotation (JSON) จาก Label Studio เข้าสู่โครงสร้าง YOLO Dataset โดยอัตโนมัติ พร้อมสุ่มแบ่ง Split Data (Train/Val) แบบควบคุม Seed ได้
+## 🏷️ Target Classes
 
----
+Dataset ในโปรเจกต์มีทั้งหมด **3 Classes**
 
-## 🏷 คลาสเป้าหมาย (Target Classes)
+   Class ID  Class Name
+  ---------- --------------
+     `0`     **Lausanne**
+     `1`     **Oreo**
+     `2`     **Voiz**
 
-โมเดลถูกฝึกสอนให้ตรวจจับวัตถุขนมทั้งหมด 3 ชนิด ดังนี้:
+รายชื่อ Class ถูกกำหนดไว้ใน:
 
-| Class ID | Class Name | Description | Color Code (Label Studio) |
-| :---: | :---: | :--- | :---: |
-| `0` | **Oreo** | ซองขนมโอรีโอ (คุกกี้สอดไส้ครีม) | `#FF0000` (Red) |
-| `1` | **Lausanne** | ซองขนมลอซานน์ (เวเฟอร์) | `#00AA00` (Green) |
-| `2` | **Voiz** | ซองขนมวอยซ์ (แครกเกอร์/เวเฟอร์) | `#0000FF` (Blue) |
-
----
-
-## 📁 โครงสร้างโปรเจกต์ (Project Structure)
-
-```text
-AIYolo-Snacks/
-├── Model/
-│   └── best.pt                           # ไฟล์ Weight ของโมเดลที่เทรนสำเร็จแล้ว (Best Weights)
-├── New-Snacks_dataset/                   # ชุดข้อมูลรูปภาพและ Labels ในรูปแบบ YOLO Format
-│   ├── images/
-│   │   ├── train/                        # รูปภาพสำหรับการเทรน
-│   │   └── val/                          # รูปภาพสำหรับการตรวจสอบ (Validation)
-│   ├── labels/
-│   │   ├── train/                        # ไฟล์ .txt Bounding box สำหรับ Train
-│   │   └── val/                          # ไฟล์ .txt Bounding box สำหรับ Val
-│   └── data.yaml                         # ไฟล์คอนฟิกูเรชันอธิบาย Path และ Classes ของ Dataset
-├── frame/                                # โฟลเดอร์เก็บเฟรม/รูปภาพตั้งต้นสำหรับนำเข้า Label Studio
-├── 01-export_dataset.py                  # สคริปต์สกัด JSON จาก Label Studio เป็น YOLO Format
-├── 02-train2.py                          # สคริปต์สำหรับการเทรนโมเดล YOLO
-├── 03-test_image.py                      # สคริปต์ทดสอบการตรวจจับกับไฟล์รูปภาพเดี่ยว/โฟลเดอร์
-├── 04-test_video.py                      # สคริปต์ทดสอบการตรวจจับกับไฟล์วิดีโอ (.mp4, .avi)
-├── 05-test-camera2.py                    # สคริปต์ตรวจจับแบบ Real-time ผ่านกล้อง Webcam
-├── project-9-at-2026-10-05-23-47-6...json # ไฟล์ Export ข้อมูล Label ทั้งหมดจาก Label Studio
-├── requirements.txt                      # รายการ Dependencies และ ไลบรารีที่ต้องใช้
-├── test.jpg                              # รูปภาพตัวอย่างสำหรับทดสอบการทำงานรวดเร็ว
-└── README.md                             # คู่มือและเอกสารกำกับโปรเจกต์
+``` text
+New-Snacks_dataset/classes.txt
 ```
 
----
+และ:
 
-## 🛠 ข้อกำหนดและการติดตั้ง (Requirements & Installation)
+``` text
+New-Snacks_dataset/data.yaml
+```
 
-### 1. สภาพแวดล้อมระบบ (Environment Setup)
-แนะนำให้ใช้ **Python 3.9 - 3.11** และทำงานผ่าน Virtual Environment เพื่อป้องกันความขัดแย้งของไลบรารี
+ตัวอย่าง `data.yaml`:
 
-```bash
-# 1. สร้าง Virtual Environment
+``` yaml
+train: images/train
+val: images/val
+
+nc: 3
+names: ['Lausanne', 'Oreo', 'Voiz']
+```
+
+------------------------------------------------------------------------
+
+## 📊 Dataset
+
+Dataset ที่มีอยู่ภายในโปรเจกต์ประกอบด้วย:
+
+-   Frame Images ทั้งหมด: **37 ภาพ**
+-   Training Images: **29 ภาพ**
+-   Validation Images: **8 ภาพ**
+-   Train Split: **80%**
+-   Validation Split: **20%**
+-   Random Seed: **42**
+
+โครงสร้าง Dataset:
+
+``` text
+New-Snacks_dataset/
+├── images/
+│   ├── train/
+│   └── val/
+│
+├── labels/
+│   ├── train/
+│   └── val/
+│
+├── classes.txt
+└── data.yaml
+```
+
+------------------------------------------------------------------------
+
+## 📁 Project Structure
+
+``` text
+AIYolo-Snacks/
+│
+├── Model/
+│   └── best.pt
+│
+├── New-Snacks_dataset/
+│   ├── images/
+│   │   ├── train/
+│   │   └── val/
+│   │
+│   ├── labels/
+│   │   ├── train/
+│   │   └── val/
+│   │
+│   ├── classes.txt
+│   └── data.yaml
+│
+├── frame/
+│   └── images/
+│
+├── 01-export_dataset.py
+├── 02-train2.py
+├── 03-test_image.py
+├── 04-test_video.py
+├── 05-test-camera2.py
+│
+├── project-9-at-2026-10-05-23-47-6b8d3295.json
+├── requirements.txt
+├── test.jpg
+└── README.md
+```
+
+> หมายเหตุ: `04-test_video.py` อ้างถึงไฟล์ `VID_20261005_230813.mp4`
+> แต่ไฟล์วิดีโอนี้ไม่ได้อยู่ในชุดไฟล์โปรเจกต์ที่ส่งมานี้ หากต้องการทดสอบวิดีโอ
+> ต้องนำไฟล์ดังกล่าวมาไว้ที่ Root ของโปรเจกต์ก่อน
+
+------------------------------------------------------------------------
+
+# 🛠️ Requirements & Installation
+
+## 1. Python
+
+แนะนำให้ใช้ Python เวอร์ชันที่รองรับกับ Ultralytics และ PyTorch ในระบบของผู้ใช้งาน
+
+ตรวจสอบเวอร์ชัน Python:
+
+``` bash
+python --version
+```
+
+------------------------------------------------------------------------
+
+## 2. สร้าง Virtual Environment
+
+### Windows
+
+``` bash
 python -m venv env
-
-# 2. เปิดใช้งาน Virtual Environment
-# สำหรับ Windows (Command Prompt)
 env\Scripts\activate
+```
 
-# สำหรับ Windows (PowerShell)
-.\env\Scripts\Activate.ps1
+### macOS / Linux
 
-# สำหรับ Linux / macOS
+``` bash
+python3 -m venv env
 source env/bin/activate
 ```
 
-### 2. ติดตั้ง PyTorch พร้อมการรองรับ GPU (CUDA)
-เพื่อให้ระบบประมวลผลได้อย่างรวดเร็ว ควรติดตั้ง PyTorch เวอร์ชันรองรับ CUDA (ตัวอย่างสำหรับ CUDA 12.1):
+------------------------------------------------------------------------
 
-```bash
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+## 3. ติดตั้ง Dependencies
+
+โปรเจกต์มีไฟล์:
+
+``` text
+requirements.txt
 ```
 
-*สามารถตรวจสอบสถานะการเชื่อมต่อ GPU ได้ด้วยการรันคำสั่ง:*
-```bash
-python -c "import torch; print('CUDA Available:', torch.cuda.is_available()); print('Device Name:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
+ภายในประกอบด้วย:
+
+``` text
+ultralytics
+opencv-python
+torch
 ```
 
-### 3. ติดตั้ง Dependencies อื่นๆ
-```bash
+ติดตั้งด้วย:
+
+``` bash
 pip install -r requirements.txt
 ```
 
----
+หากยังไม่มี PyTorch ที่รองรับ GPU สามารถติดตั้ง PyTorch ให้เหมาะกับ Hardware
+ของเครื่องก่อน แล้วจึงติดตั้ง Dependencies ที่เหลือ
 
-## 🔄 ขั้นตอนการทำงานอย่างละเอียด (End-to-End Pipeline)
+------------------------------------------------------------------------
 
-```text
-  ┌─────────────────┐      ┌──────────────────┐      ┌─────────────────────┐
-  │  1. Prep Frames │ ───> │  2. Label Studio │ ───> │ 3. Export JSON File │
-  └─────────────────┘      └──────────────────┘      └─────────────────────┘
-                                                                │
-  ┌─────────────────┐      ┌──────────────────┐                 ▼
-  │ 5. Test/Infer   │ <─── │ 4. Train Model   │ <─── ┌─────────────────────┐
-  │ (Image/Cam/Vid) │      │  (02-train2.py)  │      │01-export_dataset.py │
-  └─────────────────┘      └──────────────────┘      └─────────────────────┘
+# 🔄 Project Workflow
+
+กระบวนการทำงานของโปรเจกต์:
+
+``` text
+Frame Images
+     │
+     ▼
+Label Studio
+     │
+     ▼
+Export JSON
+     │
+     ▼
+01-export_dataset.py
+     │
+     ▼
+New-Snacks_dataset
+     │
+     ▼
+02-train2.py
+     │
+     ▼
+YOLO26 Model
+     │
+     ▼
+Model/best.pt
+     │
+     ├──────────────┬───────────────┐
+     ▼              ▼               ▼
+Test Image      Test Video      Real-time Camera
+03-test_image   04-test_video   05-test-camera2
 ```
 
-### 1. การจัดเตรียมรูปภาพและการดึงเฟรม (Data Preparation)
-- นำรูปภาพซองขนม **Oreo**, **Lausanne**, และ **Voiz** ที่บันทึกได้ มาจัดเก็บไว้ในโฟลเดอร์ `frame/`
-- แนะนำให้ถ่ายภาพในหลายๆ มุมมอง, สภาพแสงที่แตกต่างกัน, และมีการวางซ้อนทับกันบางส่วนเพื่อสร้าง Dataset ที่ครอบคลุม
+------------------------------------------------------------------------
 
-### 2. การทำ Annotation ด้วย Label Studio
-1. เปิดใช้งาน Label Studio:
-   ```bash
-   label-studio start
-   ```
-2. สร้าง Project ใหม่ และกำหนด **Labeling Interface** ในส่วน Custom XML ดังนี้:
-   ```xml
-   <View>
-     <Image name="image" value="$image"/>
-     <RectangleLabels name="label" toName="image">
-       <Label background="#FF0000" value="Oreo"/>
-       <Label background="#00AA00" value="Lausanne"/>
-       <Label background="#0000FF" value="Voiz"/>
-     </RectangleLabels>
-   </View>
-   ```
-3. ทำการวาด Bounding Box ครอบซองขนมทุกชิ้นในภาพให้ชิดขอบวัตถุมากที่สุด
-4. เมื่อทำเสร็จแล้ว ให้กด **Export** เลือกรูปแบบ **JSON** แล้วนำไฟล์ `.json` ที่ได้มาวางไว้ที่ Root Directory ของโปรเจกต์ (เช่น `project-9-at-2026-10-05-23-47-6...json`)
+# 1. 📷 Data Preparation
 
-### 3. การแปลงชุดข้อมูลเป็น YOLO Format
-รันสคริปต์ `01-export_dataset.py` เพื่ออ่านไฟล์ JSON และแปลงพิกัดวัตถุพร้อมแบ่งชุดข้อมูลเป็น Train (85%) และ Validation (15%):
+รูปภาพต้นทางสำหรับ Dataset ถูกเก็บไว้ใน:
 
-```bash
+``` text
+frame/images/
+```
+
+ในโปรเจกต์ปัจจุบันมีประมาณ **37 ภาพ**
+
+รูปภาพเหล่านี้ถูกนำไปทำ Annotation ด้วย Label Studio ก่อนนำมาแปลงเป็น YOLO
+Dataset
+
+สำหรับ Dataset ที่มีคุณภาพ ควรมีภาพที่หลากหลาย เช่น:
+
+-   มุมมองที่แตกต่างกัน
+-   ระยะห่างจากวัตถุหลายระดับ
+-   สภาพแสงที่แตกต่างกัน
+-   พื้นหลังหลายรูปแบบ
+-   มีวัตถุหลายชิ้นในภาพ
+-   มีการบดบังวัตถุบางส่วน
+
+------------------------------------------------------------------------
+
+# 2. 🏷️ Annotation ด้วย Label Studio
+
+โปรเจกต์ใช้ **Label Studio** สำหรับทำ Bounding Box Annotation
+
+แต่ละภาพควรทำ Bounding Box รอบซองขนมที่ต้องการตรวจจับ และกำหนด Class ให้ถูกต้อง:
+
+``` text
+Lausanne
+Oreo
+Voiz
+```
+
+หลังจากทำ Annotation เสร็จ ให้ Export เป็น:
+
+``` text
+JSON
+```
+
+จากนั้นนำไฟล์ JSON มาไว้ใน Root Directory เดียวกับ:
+
+``` text
+01-export_dataset.py
+```
+
+ในโปรเจกต์ชุดนี้มีไฟล์:
+
+``` text
+project-9-at-2026-10-05-23-47-6b8d3295.json
+```
+
+------------------------------------------------------------------------
+
+# 3. 🔄 Convert Label Studio → YOLO Dataset
+
+ใช้:
+
+``` text
+01-export_dataset.py
+```
+
+สำหรับแปลงข้อมูล Annotation จาก Label Studio JSON เป็น YOLO Format
+
+รัน:
+
+``` bash
 python 01-export_dataset.py
 ```
-*ผลลัพธ์จะถูกสร้างไว้ในโฟลเดอร์ `New-Snacks_dataset/` พร้อมไฟล์ `data.yaml`*
 
-### 4. การเทรนโมเดล (Model Training)
-เริ่มการฝึกสอนโมเดลโดยใช้สคริปต์ `02-train2.py`:
+Script จะทำงานดังนี้:
 
-```bash
+1.  ค้นหาไฟล์ `.json` ใน Root Directory
+2.  อ่านข้อมูล Annotation
+3.  ตรวจสอบ Class ที่ถูกใช้งานจริง
+4.  แปลง Bounding Box เป็น YOLO Format
+5.  สุ่มข้อมูลด้วย Seed `42`
+6.  แบ่งข้อมูลเป็น Train 80% และ Validation 20%
+7.  Copy รูปภาพไปยัง Dataset
+8.  สร้างไฟล์ Label `.txt`
+9.  สร้าง `classes.txt`
+10. สร้าง `data.yaml`
+
+ค่าใน Script:
+
+``` python
+TRAIN_SPLIT = 0.8
+SEED = 42
+```
+
+ผลลัพธ์:
+
+``` text
+New-Snacks_dataset/
+├── images/
+│   ├── train/
+│   └── val/
+├── labels/
+│   ├── train/
+│   └── val/
+├── classes.txt
+└── data.yaml
+```
+
+------------------------------------------------------------------------
+
+# 4. 🧠 Model Training
+
+ไฟล์ที่ใช้ Train:
+
+``` text
+02-train2.py
+```
+
+รันด้วย:
+
+``` bash
 python 02-train2.py
 ```
-การทำงานของสคริปต์จะทำการบันทึก Log และ Weights ไว้ในโฟลเดอร์ `runs/detect/` เมื่อการเทรนสิ้นสุดลง ให้นำไฟล์ `best.pt` คัดลอกมาไว้ที่โฟลเดอร์ `Model/best.pt` เพื่อนำไปใช้งานต่อ
 
-### 5. การประเมินผลและการทดสอบ (Evaluation & Inference)
+Script ใช้โมเดลเริ่มต้น:
 
-- **การทดสอบกับรูปภาพเดี่ยว/โฟลเดอร์:**
-  ```bash
-  python 03-test_image.py
-  ```
-  *(ปรับแก้ Path รูปภาพที่ต้องการทดสอบในไฟล์สคริปต์)*
+``` text
+yolo26n.pt
+```
 
-- **การทดสอบกับไฟล์วิดีโอ:**
-  ```bash
-  python 04-test_video.py
-  ```
+> หมายเหตุ: ไฟล์ `yolo26n.pt` ไม่ได้อยู่ในชุดไฟล์ที่ส่งมานี้ ดังนั้นหากต้องการ Train ใหม่
+> ต้องเตรียมไฟล์โมเดลนี้ให้สามารถเข้าถึงได้ก่อน
 
-- **การทดสอบตรวจจับ Real-time ผ่านกล้องเว็บแคม:**
-  ```bash
-  python 05-test-camera2.py
-  ```
-  *(กดปุ่ม `q` บนคีย์บอร์ดเมื่อต้องการปิดหน้าต่างการทำงานของกล้อง)*
+Dataset ที่ใช้:
 
----
+``` text
+New-Snacks_dataset/data.yaml
+```
 
-## ⚙️ การตั้งค่าพารามิเตอร์ไฮเปอร์พารามิเตอร์ (Hyperparameters)
+------------------------------------------------------------------------
 
-ค่าพารามิเตอร์หลักที่ถูกกำหนดไว้ในสคริปต์ `02-train2.py` สำหรับปรับแต่งประสิทธิภาพของโมเดล:
+## ⚙️ Training Configuration
 
-| Hyperparameter | Value | Description |
-| :--- | :---: | :--- |
-| **Base Model** | `yolo26n.pt` / `yolov8n.pt` | โมเดลเริ่มต้นที่ใช้ทำ Transfer Learning |
-| **Epochs** | `200` | จำนวนรอบทั้งหมดในการฝึกสอน |
-| **Patience** | `30` | ปรับ Early Stopping เมื่อ Metric ไม่ดีขึ้นติดต่อกัน 30 Epochs |
-| **Image Size (imgsz)**| `640` | ขนาดของรูปภาพที่นำเข้าสู่การประมวลผล (640x640) |
-| **Batch Size** | `8` | ขนาด Batch สำหรับประมวลผลต่อรอบการคำนวณ |
-| **Optimizer** | `MuSGD` / `Auto` | อัลกอริทึมในการปรับแต่ง Weights |
-| **Mosaic** | `1.0` | การนำภาพ 4 ภาพมารวมกันเพื่อเพิ่มความหลากหลายของมุมมอง |
-| **Mixup** | `0.1` | การซ้อนทับภาพสองภาพเพื่อเพิ่มความทนทานต่อการถูกบดบัง |
-| **Degrees** | `15.0` | การสุ่มหมุนภาพไม่เกิน ±15 องศา |
+ค่าที่กำหนดไว้จริงใน `02-train2.py`:
 
----
+  Parameter                             Value
+  ------------------ ------------------------
+  Base Model                     `yolo26n.pt`
+  Epochs                                `150`
+  Image Size                            `640`
+  Optimizer                           `MuSGD`
+  Device               CUDA ถ้ามี ไม่เช่นนั้นใช้ CPU
+  Train Split                           `80%`
+  Validation Split                      `20%`
+  Degrees                               `7.0`
+  Shear                                 `5.0`
+  Perspective                         `0.001`
+  Flip Left/Right                       `0.5`
+  Flip Up/Down                          `0.5`
+  Mosaic                                `0.1`
+  Mixup                                 `0.1`
+  Close Mosaic                           `10`
 
-## ❓ การแก้ไขปัญหาที่พบบ่อย (Troubleshooting & FAQs)
+Device ถูกเลือกอัตโนมัติจาก:
 
-### Q1: เกิดข้อผิดพลาด `CUDA out of memory` ตอนรัน 02-train2.py
-**แนวทางแก้ไข:** ให้เปิดไฟล์ `02-train2.py` แล้วปรับลดขนาด `batch` จาก `8` เหลือ `4` หรือ `2` และตรวจสอบว่ามีโปรแกรมอื่นดึงใช้งาน VRAM อยู่หรือไม่
+``` python
+device=0 if torch.cuda.is_available() else "cpu"
+```
 
-### Q2: กล้องไม่เปิดทำงานเมื่อรัน 05-test-camera2.py
-**แนวทางแก้ไข:** ตรวจสอบว่าไม่มีโปรแกรมอื่น (เช่น Zoom, MS Teams) กำลังดึงใช้กล้องอยู่ หากยังใช้ไม่ได้ ให้ลองเปลี่ยน Index ของกล้องในสคริปต์จาก `cv2.VideoCapture(0)` เป็น `cv2.VideoCapture(1)` หรือ `2`
+ดังนั้น:
 
-### Q3: สคริปต์ 01-export_dataset.py หาไฟล์ JSON ไม่เจอ
-**แนวทางแก้ไข:** ตรวจสอบให้แน่ใจว่าไฟล์ที่ Export มาจาก Label Studio วางอยู่ในโฟลเดอร์ Root เดียวกับสคริปต์ และตรวจสอบว่าชื่อไฟล์ลงท้ายด้วย `.json`
+``` text
+มี NVIDIA CUDA GPU → ใช้ GPU
+ไม่มี CUDA GPU      → ใช้ CPU
+```
+
+------------------------------------------------------------------------
+
+# 5. 💾 Trained Model
+
+โมเดลที่ผ่านการ Train แล้วถูกจัดเก็บไว้ที่:
+
+``` text
+Model/best.pt
+```
+
+ไฟล์นี้ถูกใช้โดย Script สำหรับ Inference ทั้ง 3 รูปแบบ:
+
+``` text
+03-test_image.py
+04-test_video.py
+05-test-camera2.py
+```
+
+------------------------------------------------------------------------
+
+# 6. 🖼️ Test Image
+
+ไฟล์:
+
+``` text
+03-test_image.py
+```
+
+ใช้สำหรับทดสอบโมเดลกับรูปภาพ:
+
+``` text
+test.jpg
+```
+
+รัน:
+
+``` bash
+python 03-test_image.py
+```
+
+Script จะโหลด:
+
+``` text
+Model/best.pt
+```
+
+และใช้ Confidence Threshold:
+
+``` python
+conf=0.5
+```
+
+ผลลัพธ์จะถูกแสดงผ่าน OpenCV และสามารถกดปุ่มใดก็ได้เพื่อปิดหน้าต่าง
+
+ตัวอย่าง Workflow:
+
+``` text
+test.jpg
+   ↓
+Model/best.pt
+   ↓
+YOLO26 Detection
+   ↓
+Bounding Box
+   ↓
+Class + Confidence
+```
+
+------------------------------------------------------------------------
+
+# 7. 🎥 Test Video
+
+ไฟล์:
+
+``` text
+04-test_video.py
+```
+
+ใช้สำหรับตรวจจับวัตถุจากวิดีโอ
+
+รัน:
+
+``` bash
+python 04-test_video.py
+```
+
+Script ใช้ไฟล์:
+
+``` text
+VID_20261005_230813.mp4
+```
+
+และใช้:
+
+``` python
+conf=0.5
+```
+
+ผลลัพธ์จะถูกบันทึกโดย Ultralytics ในโฟลเดอร์ประมาณ:
+
+``` text
+runs/detect/predict/
+```
+
+> ไฟล์ `VID_20261005_230813.mp4` ไม่ได้รวมอยู่ใน ZIP นี้ จึงต้องเพิ่มไฟล์เองก่อนรัน
+> Script
+
+------------------------------------------------------------------------
+
+# 8. 📹 Real-time Camera Detection
+
+ไฟล์:
+
+``` text
+05-test-camera2.py
+```
+
+ใช้ Webcam สำหรับตรวจจับวัตถุแบบ Real-time
+
+รัน:
+
+``` bash
+python 05-test-camera2.py
+```
+
+ระบบจะเปิดกล้องด้วย:
+
+``` python
+cv2.VideoCapture(0)
+```
+
+และใช้ Confidence Threshold:
+
+``` python
+conf=0.25
+```
+
+Device:
+
+``` python
+device=0 if torch.cuda.is_available() else "cpu"
+```
+
+Workflow:
+
+``` text
+Webcam
+   ↓
+OpenCV
+   ↓
+YOLO26
+   ↓
+Object Detection
+   ↓
+Bounding Box + Class + Confidence
+```
+
+กด:
+
+``` text
+q
+```
+
+เพื่อออกจากระบบ
+
+------------------------------------------------------------------------
+
+# 📈 Detection Output
+
+ผลการตรวจจับของ YOLO จะประกอบด้วย:
+
+-   Bounding Box
+-   Class Name
+-   Confidence Score
+
+ตัวอย่าง:
+
+``` text
+Oreo      0.92
+Lausanne  0.87
+Voiz      0.95
+```
+
+ค่า Confidence จะขึ้นอยู่กับภาพและผลการทำนายของโมเดลในแต่ละกรณี
+
+------------------------------------------------------------------------
+
+# 📂 ไฟล์สำคัญ
+
+  File                               หน้าที่
+  ---------------------------------- -----------------------------------------
+  `01-export_dataset.py`             แปลง Label Studio JSON เป็น YOLO Dataset
+  `02-train2.py`                     Train YOLO26
+  `03-test_image.py`                 ทดสอบกับรูปภาพ
+  `04-test_video.py`                 ทดสอบกับวิดีโอ
+  `05-test-camera2.py`               ตรวจจับผ่าน Webcam แบบ Real-time
+  `Model/best.pt`                    Trained Model สำหรับ Inference
+  `New-Snacks_dataset/data.yaml`     Configuration ของ Dataset
+  `New-Snacks_dataset/classes.txt`   รายชื่อ Classes
+  `test.jpg`                         รูปภาพสำหรับทดสอบ
+  `requirements.txt`                 Python Dependencies
+  `*.json`                           Annotation Export จาก Label Studio
+
+------------------------------------------------------------------------
+
+# 🚀 Recommended Workflow
+
+หากต้องการเริ่มโปรเจกต์ใหม่ตั้งแต่ต้น:
+
+### Step 1 --- เตรียม Environment
+
+``` bash
+python -m venv env
+```
+
+เปิดใช้งาน Environment แล้วติดตั้ง:
+
+``` bash
+pip install -r requirements.txt
+```
+
+### Step 2 --- เตรียม Annotation
+
+นำรูปภาพไปทำ Bounding Box ด้วย Label Studio
+
+จากนั้น Export เป็น:
+
+``` text
+JSON
+```
+
+และนำ JSON มาไว้ใน Root Directory
+
+### Step 3 --- สร้าง Dataset
+
+``` bash
+python 01-export_dataset.py
+```
+
+### Step 4 --- Train
+
+เตรียม `yolo26n.pt` แล้วรัน:
+
+``` bash
+python 02-train2.py
+```
+
+### Step 5 --- นำ Best Model ไปใช้งาน
+
+ตรวจสอบให้มี:
+
+``` text
+Model/best.pt
+```
+
+### Step 6 --- Test Image
+
+``` bash
+python 03-test_image.py
+```
+
+### Step 7 --- Test Video
+
+เตรียม:
+
+``` text
+VID_20261005_230813.mp4
+```
+
+แล้วรัน:
+
+``` bash
+python 04-test_video.py
+```
+
+### Step 8 --- Real-time Camera
+
+``` bash
+python 05-test-camera2.py
+```
+
+------------------------------------------------------------------------
+
+# ⚠️ Notes
+
+-   Dataset ปัจจุบันมี 3 Classes: `Lausanne`, `Oreo`, `Voiz`
+-   `01-export_dataset.py` ใช้ Train/Validation Split ที่ **80/20**
+-   ใช้ Random Seed `42`
+-   `02-train2.py` กำหนด Training จำนวน **150 Epochs**
+-   Training ใช้ `MuSGD`
+-   Image Size คือ `640`
+-   GPU จะถูกใช้เมื่อเครื่องมี NVIDIA CUDA ที่ PyTorch ตรวจพบ
+-   หากไม่มี CUDA ระบบจะใช้ CPU
+-   Inference ใช้ `Model/best.pt`
+-   Test Image ใช้ Confidence `0.5`
+-   Test Video ใช้ Confidence `0.5`
+-   Real-time Camera ใช้ Confidence `0.25`
+-   ต้องมี `yolo26n.pt` หากต้องการ Train ใหม่
+-   ไฟล์วิดีโอ `VID_20261005_230813.mp4` ไม่ได้รวมอยู่ใน ZIP ที่ส่งมา
+-   Dataset และโมเดลที่มีอยู่ในโปรเจกต์สามารถใช้สำหรับการทดสอบได้ทันทีตามไฟล์ที่มี
+
+------------------------------------------------------------------------
+
+# 📌 Project Summary
+
+**AIYolo-Snacks** เป็นโปรเจกต์ Computer Vision
+สำหรับตรวจจับและจำแนกซองขนมด้วย **YOLO26**
+
+ระบบสามารถตรวจจับ:
+
+``` text
+┌─────────────────────────┐
+│       AIYolo-Snacks     │
+└────────────┬────────────┘
+             │
+             ▼
+      ┌──────────────┐
+      │    YOLO26    │
+      └──────┬───────┘
+             │
+     ┌───────┼────────┐
+     ▼       ▼        ▼
+  Lausanne  Oreo     Voiz
+     │       │        │
+     └───────┼────────┘
+             ▼
+     Bounding Box
+     + Class
+     + Confidence
+```
+
+รองรับการใช้งาน 3 รูปแบบ:
+
+``` text
+Image
+  ↓
+03-test_image.py
+
+Video
+  ↓
+04-test_video.py
+
+Webcam
+  ↓
+05-test-camera2.py
+```
+
+โมเดลที่ผ่านการ Train แล้ว:
+
+``` text
+Model/best.pt
+```
+
+จึงสามารถนำไปใช้สำหรับตรวจจับซองขนมจาก **รูปภาพ วิดีโอ และกล้องแบบ Real-time**
+ได้
